@@ -25,17 +25,17 @@
 #import <QuartzCore/QuartzCore.h>
 
 typedef enum {
-  RotationDirectionNone,
-  RotationDirectionLeft,
-  RotationDirectionRight
-} RotationDirection;
+  FlipDirectionNone,
+  FlipDirectionLeft,
+  FlipDirectionRight
+} FlipDirection;
 
 @interface JWFlipNavigationController ()
 
 @property (nonatomic, assign) NSInteger currentPageIndex;
 @property (nonatomic, assign) CGFloat panStartX;
 @property (nonatomic, assign) CGFloat rotationRadius;
-@property (nonatomic, assign) RotationDirection rotationDirection;
+@property (nonatomic, assign) FlipDirection rotationDirection;
 
 // Page flipping image halves, shadows
 @property (nonatomic, strong) UIImageView *bgLeftHalf;
@@ -207,11 +207,11 @@ typedef enum {
 - (void)initializePageViews {
   
   UIViewController *currentView = [self _viewControllerForIndex:_currentPageIndex];
-  NSInteger nextIndex = (_rotationDirection == RotationDirectionLeft) ? (_currentPageIndex + 1) : (_currentPageIndex - 1);
+  NSInteger nextIndex = (_rotationDirection == FlipDirectionLeft) ? (_currentPageIndex + 1) : (_currentPageIndex - 1);
   
   UIViewController *nextView = [self _viewControllerForIndex:nextIndex];
 
-  if (_rotationDirection == RotationDirectionLeft) {
+  if (_rotationDirection == FlipDirectionLeft) {
 
     self.bgLeftHalf = [self leftHalfOfView:currentView.view];
     self.bgRightHalf = nil; // Instead of covering new view with copy - show view and trigger viewWillAppear()
@@ -276,7 +276,7 @@ typedef enum {
 - (float)angleFromPosition:(float)position {
   
   CGFloat panDelta;
-  if (_rotationDirection == RotationDirectionLeft) {
+  if (_rotationDirection == FlipDirectionLeft) {
     panDelta = _rotationRadius - (_panStartX - position);
   } else {
     panDelta = _rotationRadius - (position - _panStartX);
@@ -296,27 +296,27 @@ typedef enum {
   _rotationRadius = fabsf(_panStartX - self.view.frame.size.width / 2);
   if (_panStartX < (self.view.frame.size.width / 2)) {
     
-    _rotationDirection = RotationDirectionRight;
+    _rotationDirection = FlipDirectionRight;
     
   } else {
     
-    _rotationDirection = RotationDirectionLeft;
+    _rotationDirection = FlipDirectionLeft;
     
   }
-  if (_rotationDirection == RotationDirectionRight && _currentPageIndex == 0) {
+  if (_rotationDirection == FlipDirectionRight && _currentPageIndex == 0) {
     
-    _rotationDirection = RotationDirectionNone;
+    _rotationDirection = FlipDirectionNone;
     return;
   }
   
-  if (_rotationDirection == RotationDirectionLeft) {
+  if (_rotationDirection == FlipDirectionLeft) {
     // If flipping to a new view controller - first check if one is available, else abort gesture.
     UIViewController *nextView = [self _viewControllerForIndex:(_currentPageIndex + 1)];
     if (nextView) {
       nextView.view.frame = self.topViewController.view.frame;
       
     } else {
-      _rotationDirection = RotationDirectionNone;
+      _rotationDirection = FlipDirectionNone;
       recognizer.enabled = NO;
       recognizer.enabled = YES;
       return;
@@ -339,7 +339,7 @@ typedef enum {
 
 - (void)_panChanged:(UIGestureRecognizer *)recognizer {
   
-  if (_rotationDirection == RotationDirectionNone) {
+  if (_rotationDirection == FlipDirectionNone) {
     return;
   }
   
@@ -352,7 +352,7 @@ typedef enum {
   
   CGFloat shadowOffset = 0;
   
-  if (_rotationDirection == RotationDirectionLeft) {
+  if (_rotationDirection == FlipDirectionLeft) {
     
     if (!_fgLeftHalf) {
       // If this view-half hasn't been rendered yet, do it now
@@ -400,8 +400,8 @@ typedef enum {
   CGFloat maxOffset = [self pageWidth] / 2;
   float shadowAlpha = shadowOffset / maxOffset;
   
-  if ((_rotationDirection == RotationDirectionLeft && angle < M_PI_2) ||
-      (_rotationDirection == RotationDirectionRight && angle > M_PI_2)) {
+  if ((_rotationDirection == FlipDirectionLeft && angle < M_PI_2) ||
+      (_rotationDirection == FlipDirectionRight && angle > M_PI_2)) {
     
     _leftShadow.alpha = 0;
     
@@ -421,7 +421,7 @@ typedef enum {
 
 - (void)_panEnded:(UIGestureRecognizer *)recognizer {
   
-  if (_rotationDirection == RotationDirectionNone) {
+  if (_rotationDirection == FlipDirectionNone) {
     // If no rotation is set, e.g. when no next controller and pan is manually ended,
     // then nothing to clean up, aborting...
     return;
@@ -436,8 +436,8 @@ typedef enum {
     [self setRotationAngle:0 forView:_fgLeftHalf];
     [self setRotationAngle:0 forView:_fgRightHalf];
     
-    if ((_rotationDirection == RotationDirectionLeft && angle < M_PI_2) ||
-        (_rotationDirection == RotationDirectionRight && angle > M_PI_2)) {
+    if ((_rotationDirection == FlipDirectionLeft && angle < M_PI_2) ||
+        (_rotationDirection == FlipDirectionRight && angle > M_PI_2)) {
       [self setRightShadowOffset:[self pageWidth] / 2];
       _rightShadow.alpha = 1;
     } else {
@@ -449,7 +449,7 @@ typedef enum {
 
     
     if (angle > M_PI_2) {
-      if (_rotationDirection == RotationDirectionRight) {
+      if (_rotationDirection == FlipDirectionRight) {
         
         UIViewController *oldView = [_views objectAtIndex:_currentPageIndex];
         [self popViewControllerAnimated:NO];
@@ -461,7 +461,7 @@ typedef enum {
       }
     } else {
       
-      if (_rotationDirection == RotationDirectionLeft) {
+      if (_rotationDirection == FlipDirectionLeft) {
         // Remove the view that was just instantiated but never eventually pushed
         [self popViewControllerAnimated:NO];
         [_views removeObjectAtIndex:(_currentPageIndex + 1)];
@@ -491,7 +491,7 @@ typedef enum {
       
     case UIGestureRecognizerStateChanged:
 
-      if (_rotationDirection == RotationDirectionNone) {
+      if (_rotationDirection == FlipDirectionNone) {
         return;
       }
       
@@ -502,7 +502,7 @@ typedef enum {
     case UIGestureRecognizerStateCancelled:
     case UIGestureRecognizerStateEnded:
       
-      if (_rotationDirection == RotationDirectionNone) {
+      if (_rotationDirection == FlipDirectionNone) {
         return;
       }
       
