@@ -23,6 +23,6 @@
 
 #import <UIKit/UIKit.h>
 
-@interface JWFlipNavigationController : UINavigationController
+@interface JWFlipNavigationController : UINavigationController <UIGestureRecognizerDelegate>
 
 @end
