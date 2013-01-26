@@ -40,10 +40,11 @@ typedef enum {
 // Page flipping image halves, shadows
 @property (nonatomic, strong) UIImageView *bgLeftHalf;
 @property (nonatomic, strong) UIImageView *bgRightHalf;
-@property (nonatomic, strong) UIImageView *leftShadow;
-@property (nonatomic, strong) UIImageView *rightShadow;
 @property (nonatomic, strong) UIImageView *fgLeftHalf;
 @property (nonatomic, strong) UIImageView *fgRightHalf;
+
+@property (nonatomic, strong) UIImageView *leftShadow;
+@property (nonatomic, strong) UIImageView *rightShadow;
 
 @property (nonatomic, strong) NSMutableArray *views;
 
@@ -74,11 +75,11 @@ typedef enum {
 
 - (UIViewController *)_viewControllerForIndex:(NSInteger)index {
   
-  NSLog(@"View for index %d", index);
+//  NSLog(@"View for index %d", index);
   if (index < _views.count) {
     return [_views objectAtIndex:index];
   } else {
-    NSLog(@"Requesting new view for index %d", index);
+//    NSLog(@"Requesting new view for index %d", index);
     
     UIViewController *controller = [self viewControllerForIndex:index];
 
@@ -468,7 +469,7 @@ typedef enum {
       }
       
     }
-    NSLog(@"Current page index: %d", _currentPageIndex);
+//    NSLog(@"Current page index: %d", _currentPageIndex);
     
     
     [_leftShadow removeFromSuperview];
