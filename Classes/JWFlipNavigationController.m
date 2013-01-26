@@ -160,10 +160,26 @@ typedef enum {
 - (UIImageView *)imageFromView:(UIView *)view {
   
   CGSize renderSize = view.frame.size;
+  UIScrollView *scrollView = ([view isKindOfClass:[UIScrollView class]]) ? (UIScrollView *)view : nil;
   
   UIGraphicsBeginImageContextWithOptions(renderSize, NO, 0.0);
+
+  if (scrollView) {
+
+    // If view is a UISCrollView (or inherrits from, like UITableView,
+    // the context has to be offset to capture the visible are and not top of content
+    CGContextRef ctx = UIGraphicsGetCurrentContext();
+    CGContextTranslateCTM(ctx, -scrollView.contentOffset.x, -scrollView.contentOffset.y);
+
+    [view.layer renderInContext:UIGraphicsGetCurrentContext()];
+
+  } else {
+
+    [view.layer renderInContext:UIGraphicsGetCurrentContext()];
+
+  }
   
-  [view.layer renderInContext:UIGraphicsGetCurrentContext()];
+
   UIImageView *image = [[UIImageView alloc] initWithImage:UIGraphicsGetImageFromCurrentImageContext()];
   UIGraphicsEndImageContext();
   image.clipsToBounds = YES;
