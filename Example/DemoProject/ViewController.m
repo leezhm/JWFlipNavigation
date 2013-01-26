@@ -1,0 +1,35 @@
+//
+//  ViewController.m
+//  JWDemoProject
+//
+//  Created by John Willsund on 2013-01-24.
+//  Copyright (c) 2013 John Willsund. All rights reserved.
+//
+
+#import "ViewController.h"
+
+@interface ViewController ()
+
+@end
+
+@implementation ViewController
+
+- (CGFloat)randFloat {
+  
+  return (rand() % 100) / 100.;
+  
+}
+
+- (void)viewDidLoad {
+ [super viewDidLoad];
+  self.view.backgroundColor = [UIColor colorWithHue:[self randFloat] saturation:.8 brightness:.8 alpha:1];
+  
+}
+
+- (void)viewWillAppear:(BOOL)animated {
+  [super viewWillAppear:animated];
+  _digitLabel.text = [NSString stringWithFormat:@"%d", _digit];
+  
+}
+
+@end
