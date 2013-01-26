@@ -24,7 +24,7 @@
 #import "JWFlipNavigationController.h"
 #import <QuartzCore/QuartzCore.h>
 
-#define RELEASE_PAGE_DROP_DURATION .4 // seconds
+#define RELEASE_PAGE_MAX_DROP_DURATION .4
 
 typedef enum {
   FlipDirectionNone,
@@ -533,13 +533,16 @@ typedef enum {
     
   } else {
     
+    // The page's drop time is proportional to the angle's distance to 0 or pi
+    float dropDuration = RELEASE_PAGE_MAX_DROP_DURATION * (MIN(angle, (M_PI - angle)) / M_PI_2);
+    
     if (angle < M_PI_2) {
-      [self setRotationAngle:0 forLayer:_flipLayer animationDuration:RELEASE_PAGE_DROP_DURATION];
+      [self setRotationAngle:0 forLayer:_flipLayer animationDuration:dropDuration];
     } else {
-      [self setRotationAngle:M_PI forLayer:_flipLayer animationDuration:RELEASE_PAGE_DROP_DURATION];
+      [self setRotationAngle:M_PI forLayer:_flipLayer animationDuration:dropDuration];
     }
 
-    [UIView animateWithDuration:RELEASE_PAGE_DROP_DURATION delay:0 options:UIViewAnimationCurveEaseOut animations:^{
+    [UIView animateWithDuration:dropDuration delay:0 options:UIViewAnimationCurveEaseOut animations:^{
       
       if ((_flipDirection == FlipDirectionLeft && angle < M_PI_2) ||
           (_flipDirection == FlipDirectionRight && angle > M_PI_2)) {
