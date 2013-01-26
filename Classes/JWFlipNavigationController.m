@@ -126,7 +126,7 @@ typedef enum {
   CGFloat locations[] = {0, 1};
 
   
-    CGGradientRef gradient = CGGradientCreateWithColorComponents(colorSpace, components, locations, 2);
+  CGGradientRef gradient = CGGradientCreateWithColorComponents(colorSpace, components, locations, 2);
   CGContextDrawLinearGradient(UIGraphicsGetCurrentContext(), gradient, CGPointZero, CGPointMake(frame.size.width, 0), 0);
   CGGradientRelease(gradient);
   
@@ -210,7 +210,9 @@ typedef enum {
   NSInteger nextIndex = (_rotationDirection == RotationDirectionLeft) ? (_currentPageIndex + 1) : (_currentPageIndex - 1);
   
   UIViewController *nextView = [self _viewControllerForIndex:nextIndex];
+
   if (_rotationDirection == RotationDirectionLeft) {
+
     self.bgLeftHalf = [self leftHalfOfView:currentView.view];
     self.bgRightHalf = nil; // Instead of covering new view with copy - show view and trigger viewWillAppear()
     self.fgLeftHalf = nil;
@@ -405,7 +407,7 @@ typedef enum {
     
     _rightShadow.alpha = shadowAlpha;
     [self setRightShadowOffset:shadowOffset];
-        NSLog(@"Right shadow offset: %g, alpha: %g", _rightShadow.frame.origin.x, _rightShadow.alpha);
+//        NSLog(@"Right shadow offset: %g, alpha: %g", _rightShadow.frame.origin.x, _rightShadow.alpha);
     
   } else {
     
