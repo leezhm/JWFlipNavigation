@@ -36,13 +36,10 @@ typedef enum {
 @interface JWFlipNavigationController ()
 
 @property (nonatomic, assign) NSInteger currentPageIndex;
+
 @property (nonatomic, assign) CGFloat panStartX;
 @property (nonatomic, assign) CGFloat rotationRadius;
 @property (nonatomic, assign) FlipDirection flipDirection;
-
-// Page flipping image halves, shadows
-@property (nonatomic, strong) UIImageView *bgLeftHalf;
-@property (nonatomic, strong) UIImageView *bgRightHalf;
 
 @property (nonatomic, strong) UIView *flipPage;
 @property (nonatomic, strong) CATransformLayer *flipLayer;
@@ -51,7 +48,8 @@ typedef enum {
 @property (nonatomic, strong) UIImageView *leftShadow;
 @property (nonatomic, strong) UIImageView *rightShadow;
 
-@property (nonatomic, strong) NSMutableArray *views;
+ //Placeholder for new VC until added to self.viewControllers
+@property (nonatomic, strong) UIViewController *nextViewController;
 
 @property (nonatomic, strong) UIPanGestureRecognizer *recognizer;
 @property (assign) BOOL isFlipping;
@@ -64,7 +62,6 @@ typedef enum {
   
   self = [super initWithRootViewController:rootViewController];
   if (self) {
-    _views = [NSMutableArray arrayWithObject:self.topViewController];
     self.navigationBarHidden = YES;
   }
   return self;
@@ -82,20 +79,11 @@ typedef enum {
 
 - (UIViewController *)_viewControllerForIndex:(NSInteger)index {
   
-//  NSLog(@"View for index %d", index);
-  if (index < _views.count) {
-    return [_views objectAtIndex:index];
+  if (index < self.viewControllers.count) {
+    return [self.viewControllers objectAtIndex:index];
   } else {
-//    NSLog(@"Requesting new view for index %d", index);
-    
     UIViewController *controller = [self viewControllerForIndex:index];
-
-    if (controller) {
-      [_views addObject:controller];
-    }
-
     return controller;
-    
   }
   
 }
@@ -105,45 +93,6 @@ typedef enum {
   // Override this method to return view controllers at given index
   return nil;
   
-}
-
-#pragma mark - Shadow Methods
-
-- (UIImageView *)leftGradientForFrame:(CGRect)frame {
-  
-  CGFloat components[] = {0, 0, 0, 0, 0, 0, 0, 1};
-  
-  return [self gradientImageForFrame:frame withCompoments:components];
-  
-}
-
-
-- (UIImageView *)rightGradientForFrame:(CGRect)frame {
-  
-  CGFloat components[] = {0, 0, 0, 1, 0, 0, 0, 0};
-  
-  return [self gradientImageForFrame:frame withCompoments:components];
-  
-}
-
-- (UIImageView *)gradientImageForFrame:(CGRect)frame withCompoments:(CGFloat*)components {
-  
-  UIGraphicsBeginImageContextWithOptions(frame.size, NO, 0.0);
-
-  CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
-  CGFloat locations[] = {0, 1};
-
-  
-  CGGradientRef gradient = CGGradientCreateWithColorComponents(colorSpace, components, locations, 2);
-  CGContextDrawLinearGradient(UIGraphicsGetCurrentContext(), gradient, CGPointZero, CGPointMake(frame.size.width, 0), 0);
-  CGGradientRelease(gradient);
-  
-  
-  UIImageView *image = [[UIImageView alloc] initWithImage:UIGraphicsGetImageFromCurrentImageContext()];
-  image.frame = frame;
-  UIGraphicsEndImageContext();
-
-  return image;
 }
 
 - (void)setLeftShadowOffset:(CGFloat)offset {
@@ -172,7 +121,6 @@ typedef enum {
   UIViewController *currentController = [self _viewControllerForIndex:_currentPageIndex];
   NSInteger nextIndex = (_flipDirection == FlipDirectionLeft) ? (_currentPageIndex + 1) : (_currentPageIndex - 1);
   
-  UIViewController *nextView = [self _viewControllerForIndex:nextIndex];
   
   CGRect frame = currentController.view.frame;
   frame.origin.y = 20;
@@ -197,7 +145,7 @@ typedef enum {
     
     // After rendering the new view behind the current - set is as front view controller
     NSMutableArray *viewControllers = [NSMutableArray arrayWithArray:self.viewControllers];
-    [viewControllers addObject:nextView];
+    [viewControllers addObject:_nextViewController], _nextViewController = nil;
     self.viewControllers = viewControllers;
     
   } else {
@@ -207,6 +155,8 @@ typedef enum {
     [_flipLayer addSublayer:leftHalfLayer];
     [_flipPage.layer addSublayer:rightHalfLayer];
     
+    UIViewController *nextView = [self _viewControllerForIndex:nextIndex];
+
     // Render layers for previous controller that is currently behind the current controller
     leftHalfLayer = [JWFlipImageTools leftHalfLayerFromView:nextView.view];
     [_flipPage.layer insertSublayer:leftHalfLayer atIndex:0];
@@ -219,10 +169,13 @@ typedef enum {
     
   }
   
-  self.leftShadow = [self leftGradientForFrame:CGRectMake(0, 0, [self pageWidth] / 2, self.view.frame.size.height)];
+  self.leftShadow = [JWFlipImageTools leftGradientForFrame:CGRectMake(0,
+                                                                      0,
+                                                                      [self pageWidth] / 2,
+                                                                      self.view.frame.size.height)];
   _leftShadow.alpha = 0;
 
-  self.rightShadow = [self rightGradientForFrame:_leftShadow.frame];
+  self.rightShadow = [JWFlipImageTools rightGradientForFrame:_leftShadow.frame];
   _rightShadow.alpha = 0;
   
   [_flipPage addSubview:_leftShadow];
@@ -312,7 +265,7 @@ typedef enum {
 
 - (void)finalizeRenderingNewViewComponents {
   
-  UIViewController *nextController = [_views objectAtIndex:(_currentPageIndex + 1)];
+  UIViewController *nextController = [self.viewControllers objectAtIndex:(_currentPageIndex + 1)];
   
   CALayer *leftHalf = [JWFlipImageTools leftHalfLayerFromView:nextController.view];
   
@@ -348,9 +301,9 @@ typedef enum {
   
   if (_flipDirection == FlipDirectionLeft) {
     // If flipping to a new view controller - first check if one is available, else abort gesture.
-    UIViewController *nextView = [self _viewControllerForIndex:(_currentPageIndex + 1)];
-    if (nextView) {
-      nextView.view.frame = self.topViewController.view.frame;
+    _nextViewController = [self _viewControllerForIndex:(_currentPageIndex + 1)];
+    if (_nextViewController) {
+      _nextViewController.view.frame = self.topViewController.view.frame;
       
     } else {
       _flipDirection = FlipDirectionNone;
@@ -484,9 +437,7 @@ typedef enum {
     if (_flipDirection == FlipDirectionRight) {
       
       // User has navigated back to previous view controller, the last one will be released.
-      UIViewController *oldView = [_views objectAtIndex:_currentPageIndex];
       [self popViewControllerAnimated:NO];
-      [_views removeObject:oldView];
       _currentPageIndex--;
       
     } else {
@@ -500,7 +451,6 @@ typedef enum {
        the view controller that was added when begin flipping will now be released.
        */
       [self popViewControllerAnimated:NO];
-      [_views removeObjectAtIndex:(_currentPageIndex + 1)];
     }
     
   }
@@ -512,8 +462,6 @@ typedef enum {
   [_rightShadow removeFromSuperview], _rightShadow = nil;
   [_flipLayer removeFromSuperlayer];
   [_flipPage removeFromSuperview];
-  [_bgLeftHalf removeFromSuperview];
-  [_bgRightHalf removeFromSuperview];
   
 }
 

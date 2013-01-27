@@ -26,7 +26,7 @@
 
 @implementation JWFlipImageTools
 
-+(CALayer *)rightHalfLayerFromView:(UIView *)view {
++ (CALayer *)rightHalfLayerFromView:(UIView *)view {
   
   CGRect frame = CGRectMake(view.frame.size.width / 2, 0, view.frame.size.width / 2, view.frame.size.height);
   CALayer *layer = [self _layerWithSize:frame.size];
@@ -37,7 +37,7 @@
   
 }
   
-+(CALayer *)leftHalfLayerFromView:(UIView *)view {
++ (CALayer *)leftHalfLayerFromView:(UIView *)view {
   
   CGRect frame = CGRectMake(0, 0, view.frame.size.width / 2, view.frame.size.height);
   CALayer *layer = [self _layerWithSize:frame.size];
@@ -49,7 +49,46 @@
   
 }
 
+#pragma mark - Shadow Methods
+
++ (UIImageView *)leftGradientForFrame:(CGRect)frame {
+  
+  CGFloat components[] = {0, 0, 0, 0, 0, 0, 0, 1};
+  
+  return [self _gradientImageForFrame:frame withCompoments:components];
+  
+}
+
+
++ (UIImageView *)rightGradientForFrame:(CGRect)frame {
+  
+  CGFloat components[] = {0, 0, 0, 1, 0, 0, 0, 0};
+  
+  return [self _gradientImageForFrame:frame withCompoments:components];
+  
+}
+
 #pragma mark - Private Methods
+
++ (UIImageView *)_gradientImageForFrame:(CGRect)frame withCompoments:(CGFloat*)components {
+  
+  UIGraphicsBeginImageContextWithOptions(frame.size, NO, 0.0);
+  
+  CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
+  CGFloat locations[] = {0, 1};
+  
+  
+  CGGradientRef gradient = CGGradientCreateWithColorComponents(colorSpace, components, locations, 2);
+  CGContextDrawLinearGradient(UIGraphicsGetCurrentContext(), gradient, CGPointZero, CGPointMake(frame.size.width, 0), 0);
+  CGGradientRelease(gradient);
+  
+  
+  UIImageView *image = [[UIImageView alloc] initWithImage:UIGraphicsGetImageFromCurrentImageContext()];
+  image.frame = frame;
+  UIGraphicsEndImageContext();
+  
+  return image;
+}
 
 + (CALayer *)_layerWithSize:(CGSize)size {
   
