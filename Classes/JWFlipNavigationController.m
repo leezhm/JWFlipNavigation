@@ -37,9 +37,11 @@ typedef enum {
 
 @property (nonatomic, assign) NSInteger currentPageIndex;
 
-@property (nonatomic, assign) CGFloat panStartX;
+@property (nonatomic, strong) UIPanGestureRecognizer *recognizer;
+@property (nonatomic, assign) CGPoint panStart;
 @property (nonatomic, assign) CGFloat rotationRadius;
 @property (nonatomic, assign) FlipDirection flipDirection;
+@property (assign) BOOL isFlipping;
 
 @property (nonatomic, strong) UIView *flipPage;
 @property (nonatomic, strong) CATransformLayer *flipLayer;
@@ -51,8 +53,6 @@ typedef enum {
  //Placeholder for new VC until added to self.viewControllers
 @property (nonatomic, strong) UIViewController *nextViewController;
 
-@property (nonatomic, strong) UIPanGestureRecognizer *recognizer;
-@property (assign) BOOL isFlipping;
 
 @end
 
@@ -111,15 +111,11 @@ typedef enum {
   
 }
 
-#pragma mark - Rendering
-
-
-
-
 - (void)initializePageViews {
   
   UIViewController *currentController = [self _viewControllerForIndex:_currentPageIndex];
-  NSInteger nextIndex = (_flipDirection == FlipDirectionLeft) ? (_currentPageIndex + 1) : (_currentPageIndex - 1);
+  NSInteger nextIndex = (_flipDirection == FlipDirectionLeft) ?
+    (_currentPageIndex + 1) : (_currentPageIndex - 1);
   
   
   CGRect frame = currentController.view.frame;
@@ -208,7 +204,6 @@ typedef enum {
   transform.m14 = 0.0005 * height / _rotationRadius;
   
   layer.transform = transform;
-
   
   [CATransaction commit];
   
@@ -232,32 +227,29 @@ typedef enum {
   [CATransaction commit];
   
 }
-- (void)setRotationAngle:(CGFloat)angle forView:(UIView *)view {
-  
-  CATransform3D transform = CATransform3DIdentity;
-  [view.layer removeAllAnimations];
-  transform = CATransform3DRotate(transform, angle, 0, 1, 0);
-  
-  float height = _rotationRadius * sinf(angle);
-  
-  // Setting the perspective
-  transform.m14 = 0.0005 * height / _rotationRadius;
-  
-  view.layer.transform = transform;
-  
-}
 
 - (float)angleFromPosition:(float)position {
   
   CGFloat panDelta;
-  if (_flipDirection == FlipDirectionLeft) {
-    panDelta = _rotationRadius - (_panStartX - position);
-  } else {
-    panDelta = _rotationRadius - (position - _panStartX);
+  switch (_flipDirection) {
+
+    case FlipDirectionLeft:
+      panDelta = _rotationRadius - (_panStart.x - position);
+      break;
+
+    case FlipDirectionRight:
+      panDelta = _rotationRadius - (position - _panStart.x);
+      break;
+      
+    default:
+#ifdef DEBUG
+      NSLog(@"Warning: Unhandled flip direction!");
+#endif
+      break;
   }
+
   panDelta = MAX(-_rotationRadius, MIN(_rotationRadius, panDelta));
-  NSInteger leftOrRightSign = 1;
-  CGFloat angle = leftOrRightSign * acosf(panDelta / _rotationRadius);
+  CGFloat angle = acosf(panDelta / _rotationRadius);
   return angle;
   
 }
@@ -278,10 +270,10 @@ typedef enum {
 
 - (void)_panBegan:(UIGestureRecognizer *)recognizer {
   
-  self.panStartX = [recognizer locationInView:self.view.window].x;
+  self.panStart = [recognizer locationInView:self.view.window];
   
-  _rotationRadius = fabsf(_panStartX - self.view.frame.size.width / 2);
-  if (_panStartX < (self.view.frame.size.width / 2)) {
+  _rotationRadius = fabsf(_panStart.x - self.view.frame.size.width / 2);
+  if (_panStart.x < (self.view.frame.size.width / 2)) {
     
     _flipDirection = FlipDirectionRight;
     
@@ -329,28 +321,33 @@ typedef enum {
   
   CGFloat angle = [self angleFromPosition:currentPosition];
   
-//  NSLog(@"Angle: %g", angle);
-  
   CGFloat shadowOffset = 0;
   
-  if (_flipDirection == FlipDirectionLeft) {
-    
-    if (!_didInitializeNewBackgroundImage) {
+  switch (_flipDirection) {
 
-      // If this view-half hasn't been rendered yet, do it now
-      [self finalizeRenderingNewViewComponents];
+    case FlipDirectionLeft:
+
+      if (!_didInitializeNewBackgroundImage) {
+        
+        // If this view-half hasn't been rendered yet, do it now
+        [self finalizeRenderingNewViewComponents];
+        
+        _didInitializeNewBackgroundImage = YES;
+      }
+      [self setRotationAngle:-angle forLayer:_flipLayer];
+      shadowOffset = _flipLayer.frame.size.width / 2;
       
-      _didInitializeNewBackgroundImage = YES;
-    }
-    
-    [self setRotationAngle:-angle forLayer:_flipLayer];
-    shadowOffset = _flipLayer.frame.size.width / 2;
-    
-  } else {
-    
-    [self setRotationAngle:(angle) forLayer:_flipLayer];
-    shadowOffset = _flipLayer.frame.size.width / 2;
-    
+      break;
+      
+    case FlipDirectionRight:
+
+      [self setRotationAngle:(angle) forLayer:_flipLayer];
+      shadowOffset = _flipLayer.frame.size.width / 2;
+
+      break;
+      
+    default:
+      break;
   }
   
   // Adjust shadows:
@@ -434,14 +431,22 @@ typedef enum {
   
   if (angle > M_PI_2) {
     
-    if (_flipDirection == FlipDirectionRight) {
-      
-      // User has navigated back to previous view controller, the last one will be released.
-      [self popViewControllerAnimated:NO];
-      _currentPageIndex--;
-      
-    } else {
-      _currentPageIndex++;
+    
+    switch (_flipDirection) {
+
+      case FlipDirectionLeft:
+        _currentPageIndex++;
+        break;
+        
+      case FlipDirectionRight:
+        // User has navigated back to previous view controller, the last one will be released.
+        [self popViewControllerAnimated:NO];
+        _currentPageIndex--;
+        break;
+        
+        
+      default:
+        break;
     }
   } else {
     
