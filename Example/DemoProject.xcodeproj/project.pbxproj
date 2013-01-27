@@ -22,6 +22,7 @@
 		52202C5916B1636E0089255D /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 52202C5716B1634F0089255D /* CoreFoundation.framework */; };
 		52202C5C16B1638F0089255D /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 52202C5B16B1638E0089255D /* QuartzCore.framework */; };
 		52DFA28116B39013004F0848 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 52202C1716B15D710089255D /* CoreGraphics.framework */; };
+		52E4532416B445A6001142BF /* JWFlipImageTools.m in Sources */ = {isa = PBXBuildFile; fileRef = 52E4532316B445A6001142BF /* JWFlipImageTools.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -47,6 +48,8 @@
 		52202C5016B160CF0089255D /* ViewController.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = ViewController.xib; sourceTree = "<group>"; };
 		52202C5716B1634F0089255D /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = System/Library/Frameworks/CoreFoundation.framework; sourceTree = SDKROOT; };
 		52202C5B16B1638E0089255D /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
+		52E4532216B445A6001142BF /* JWFlipImageTools.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = JWFlipImageTools.h; path = ../Classes/JWFlipImageTools.h; sourceTree = "<group>"; };
+		52E4532316B445A6001142BF /* JWFlipImageTools.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = JWFlipImageTools.m; path = ../Classes/JWFlipImageTools.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -70,6 +73,8 @@
 			children = (
 				52202C4316B160260089255D /* JWFlipNavigationController.h */,
 				52202C4416B160260089255D /* JWFlipNavigationController.m */,
+				52E4532216B445A6001142BF /* JWFlipImageTools.h */,
+				52E4532316B445A6001142BF /* JWFlipImageTools.m */,
 				52202C1916B15D710089255D /* DemoProject */,
 				52202C1216B15D710089255D /* Frameworks */,
 				52202C1016B15D710089255D /* Products */,
@@ -99,10 +104,10 @@
 		52202C1916B15D710089255D /* DemoProject */ = {
 			isa = PBXGroup;
 			children = (
-				52202C4D16B160CF0089255D /* DemoNavigationController.h */,
-				52202C4E16B160CF0089255D /* DemoNavigationController.m */,
 				52202C2216B15D710089255D /* AppDelegate.h */,
 				52202C2316B15D710089255D /* AppDelegate.m */,
+				52202C4D16B160CF0089255D /* DemoNavigationController.h */,
+				52202C4E16B160CF0089255D /* DemoNavigationController.m */,
 				52202C2B16B15D710089255D /* ViewController.h */,
 				52202C2C16B15D710089255D /* ViewController.m */,
 				52202C5016B160CF0089255D /* ViewController.xib */,
@@ -196,6 +201,7 @@
 				52202C2D16B15D710089255D /* ViewController.m in Sources */,
 				52202C4516B160260089255D /* JWFlipNavigationController.m in Sources */,
 				52202C5116B160D00089255D /* DemoNavigationController.m in Sources */,
+				52E4532416B445A6001142BF /* JWFlipImageTools.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
