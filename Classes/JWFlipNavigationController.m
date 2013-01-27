@@ -21,8 +21,9 @@
 //OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 //THE SOFTWARE.
 
-#import "JWFlipNavigationController.h"
 #import <QuartzCore/QuartzCore.h>
+#import "JWFlipNavigationController.h"
+#import "JWFlipImageTools.h"
 
 #define RELEASE_PAGE_MAX_DROP_DURATION .4
 
@@ -163,72 +164,8 @@ typedef enum {
 
 #pragma mark - Rendering
 
-- (UIImageView *)imageFromView:(UIView *)view {
-  
-  CGSize renderSize = view.frame.size;
-  UIScrollView *scrollView = ([view isKindOfClass:[UIScrollView class]]) ? (UIScrollView *)view : nil;
-  
-  UIGraphicsBeginImageContextWithOptions(renderSize, NO, 0.0);
 
-  if (scrollView) {
 
-    // If view is a UISCrollView (or inherrits from, like UITableView,
-    // the context has to be offset to capture the visible are and not top of content
-    CGContextRef ctx = UIGraphicsGetCurrentContext();
-    CGContextTranslateCTM(ctx, -scrollView.contentOffset.x, -scrollView.contentOffset.y);
-
-    [view.layer renderInContext:UIGraphicsGetCurrentContext()];
-
-  } else {
-
-    [view.layer renderInContext:UIGraphicsGetCurrentContext()];
-
-  }
-  
-
-  UIImageView *image = [[UIImageView alloc] initWithImage:UIGraphicsGetImageFromCurrentImageContext()];
-  UIGraphicsEndImageContext();
-  image.clipsToBounds = YES;
-  
-  CGRect frame = image.frame; frame.origin.y = 20.0; image.frame = frame;
-
-  return image;
-}
-
-- (CALayer *)rightHalfLayerFromImage:(UIImageView *)image {
-  
-  CGRect frame = image.frame;
-  frame.size.width /= 2;
-  frame.origin.x = frame.size.width;
-  CALayer *layer = [[CALayer alloc] init];
-  layer.bounds = frame;
-  layer.anchorPoint = CGPointZero;
-  layer.position = CGPointMake([self pageWidth] / 2, 0);
-
-  layer.contents = image.layer.contents;
-  layer.contentsRect = CGRectMake(.5, 0, .5, 1);
-  layer.doubleSided = NO;
-  
-  return layer;
-  
-}
-
-- (CALayer *)leftHalfLayerFromImage:(UIImageView *)image {
-
-  CGRect frame = image.frame;
-  frame.size.width /= 2;
-  
-  CALayer *layer = [[CALayer alloc] init];
-  layer.contents = image.layer.contents;
-  layer.contentsRect = CGRectMake(0, 0, 0.5, 1);
-  layer.anchorPoint = CGPointZero;
-  layer.position = CGPointZero;
-  frame.origin = CGPointZero;
-  layer.frame = frame;
-  layer.doubleSided = NO;
-
-  return layer;
-}
 
 - (void)initializePageViews {
   
@@ -241,30 +178,21 @@ typedef enum {
   frame.origin.y = 20;
   _flipPage = [[UIView alloc] initWithFrame:frame];
   
-  // Snapshot of the current visible view
-  UIImageView *currentViewImage = [self imageFromView:currentView.view];
-
   // Setting up the layer that will hold the back-to-back sublayers
   _flipLayer = [[CATransformLayer alloc] init];
   _flipLayer.anchorPoint = CGPointMake(.5, .5);
   _flipLayer.position = CGPointMake(frame.size.width / 2, frame.size.height / 2);
   _flipLayer.bounds = CGRectMake(0, 0, frame.size.width, frame.size.height);
   _flipLayer.doubleSided = YES;
-  [_flipPage.layer addSublayer:_flipLayer];
-
+  
   if (_flipDirection == FlipDirectionLeft) {
     
     // Render left and right existing view
-
-    CALayer *rightHalfLayer = [self rightHalfLayerFromImage:currentViewImage];
+    CALayer *rightHalfLayer = [JWFlipImageTools rightHalfLayerFromView:currentView.view];
     [_flipLayer addSublayer:rightHalfLayer];
-
-    // Reuse the snapshot for left half
-    frame.size.width /= 2;
-    currentViewImage.frame = frame;
-    currentViewImage.contentMode = UIViewContentModeLeft;
-    self.bgLeftHalf = currentViewImage;
-    [self.view addSubview:_bgLeftHalf];
+    
+    CALayer *leftHalfLayer = [JWFlipImageTools leftHalfLayerFromView:currentView.view];
+    [_flipPage.layer addSublayer:leftHalfLayer];
     
     // After rendering the new view behind the current - set is as front view controller
     NSMutableArray *viewControllers = [NSMutableArray arrayWithArray:self.viewControllers];
@@ -275,37 +203,34 @@ typedef enum {
     
     // Setup layer halves from current, visible view
     
-    CALayer *leftHalfLayer = [self leftHalfLayerFromImage:currentViewImage];
+    CALayer *leftHalfLayer = [JWFlipImageTools leftHalfLayerFromView:currentView.view];
     [_flipLayer addSublayer:leftHalfLayer];
-
-    frame.size.width /= 2;
-    frame.origin.x = frame.size.width;
-    currentViewImage.frame = frame;
-    currentViewImage.contentMode = UIViewContentModeRight;
-    self.bgRightHalf = currentViewImage;
-    [self.view addSubview:_bgRightHalf];
+    
+    CALayer *rightHalfLayer = [JWFlipImageTools rightHalfLayerFromView:currentView.view];
+    [self.flipPage.layer addSublayer:rightHalfLayer];
     
     // Render layers for previous layer
-    UIImageView *previousViewImage = [self imageFromView:nextView.view];
     
-    leftHalfLayer = [self leftHalfLayerFromImage:previousViewImage];
+    leftHalfLayer = [JWFlipImageTools leftHalfLayerFromView:nextView.view];
     [_flipPage.layer insertSublayer:leftHalfLayer atIndex:0];
     
-    CALayer *rightHalfLayer = [self rightHalfLayerFromImage:previousViewImage];
+    rightHalfLayer = [JWFlipImageTools rightHalfLayerFromView:nextView.view];
     rightHalfLayer.transform = CATransform3DMakeRotation(M_PI, 0, 1, 0);
     
     [_flipLayer addSublayer:rightHalfLayer];
 
-    self.leftShadow = [self leftGradientForFrame:leftHalfLayer.frame];
-    _leftShadow.alpha = 0;
     
   }
   
-  self.rightShadow = [self rightGradientForFrame:CGRectMake(0, 0, [self pageWidth] / 2, self.view.frame.size.height)];
+  self.leftShadow = [self leftGradientForFrame:CGRectMake(0, 0, [self pageWidth] / 2, self.view.frame.size.height)];
+  _leftShadow.alpha = 0;
+
+  self.rightShadow = [self rightGradientForFrame:_leftShadow.frame];
   _rightShadow.alpha = 0;
   
   [_flipPage addSubview:_leftShadow];
-  [self.view addSubview:_rightShadow];
+  [_flipPage addSubview:_rightShadow];
+  [_flipPage.layer addSublayer:_flipLayer];
   [self.view addSubview:_flipPage];
 
 }
@@ -392,22 +317,16 @@ typedef enum {
   
   UIViewController *nextController = [_views objectAtIndex:(_currentPageIndex + 1)];
   
-  UIImageView *nextViewImage = [self imageFromView:nextController.view];
-  CALayer *leftHalf = [[CALayer alloc] init];
-  leftHalf.contents = nextViewImage.layer.contents;
-  leftHalf.contentsRect = CGRectMake(0, 0, .5, 1);
-  leftHalf.anchorPoint = CGPointMake(.5, .5);
-  leftHalf.frame = CGRectMake([self pageWidth] / 2, 0, [self pageWidth] / 2, nextViewImage.frame.size.height);
-  leftHalf.doubleSided = NO;
+  CALayer *leftHalf = [JWFlipImageTools leftHalfLayerFromView:nextController.view];
   
   CATransform3D transform = CATransform3DMakeRotation(M_PI, 0, 1, 0);
   leftHalf.transform = transform;
   
-  [_flipLayer insertSublayer:leftHalf atIndex:1];
+  [_flipLayer addSublayer:leftHalf];
   
-  self.leftShadow = [self leftGradientForFrame:leftHalf.frame];
-  _leftShadow.alpha = 0;
-  [_flipPage insertSubview:_leftShadow atIndex:0];
+//  self.leftShadow = [self leftGradientForFrame:leftHalf.frame];
+//  _leftShadow.alpha = 0;
+//  [_flipPage insertSubview:_leftShadow atIndex:0];
   
 }
 
