@@ -169,12 +169,12 @@ typedef enum {
 
 - (void)initializePageViews {
   
-  UIViewController *currentView = [self _viewControllerForIndex:_currentPageIndex];
+  UIViewController *currentController = [self _viewControllerForIndex:_currentPageIndex];
   NSInteger nextIndex = (_flipDirection == FlipDirectionLeft) ? (_currentPageIndex + 1) : (_currentPageIndex - 1);
   
   UIViewController *nextView = [self _viewControllerForIndex:nextIndex];
   
-  CGRect frame = currentView.view.frame;
+  CGRect frame = currentController.view.frame;
   frame.origin.y = 20;
   _flipPage = [[UIView alloc] initWithFrame:frame];
   
@@ -184,14 +184,15 @@ typedef enum {
   _flipLayer.position = CGPointMake(frame.size.width / 2, frame.size.height / 2);
   _flipLayer.bounds = CGRectMake(0, 0, frame.size.width, frame.size.height);
   _flipLayer.doubleSided = YES;
-  
+
+  CALayer *rightHalfLayer = [JWFlipImageTools rightHalfLayerFromView:currentController.view];
+  CALayer *leftHalfLayer = [JWFlipImageTools leftHalfLayerFromView:currentController.view];
+
   if (_flipDirection == FlipDirectionLeft) {
     
-    // Render left and right existing view
-    CALayer *rightHalfLayer = [JWFlipImageTools rightHalfLayerFromView:currentView.view];
+    // When flipping left, the right half is inserted into the rotating layer,
+    // the left half is left static in _flipPage.
     [_flipLayer addSublayer:rightHalfLayer];
-    
-    CALayer *leftHalfLayer = [JWFlipImageTools leftHalfLayerFromView:currentView.view];
     [_flipPage.layer addSublayer:leftHalfLayer];
     
     // After rendering the new view behind the current - set is as front view controller
@@ -201,22 +202,18 @@ typedef enum {
     
   } else {
     
-    // Setup layer halves from current, visible view
-    
-    CALayer *leftHalfLayer = [JWFlipImageTools leftHalfLayerFromView:currentView.view];
+    // When flipping right, the left half is inserted into the rotating layer,
+    // the right half is left static in _flipPage.
     [_flipLayer addSublayer:leftHalfLayer];
+    [_flipPage.layer addSublayer:rightHalfLayer];
     
-    CALayer *rightHalfLayer = [JWFlipImageTools rightHalfLayerFromView:currentView.view];
-    [self.flipPage.layer addSublayer:rightHalfLayer];
-    
-    // Render layers for previous layer
-    
+    // Render layers for previous controller that is currently behind the current controller
     leftHalfLayer = [JWFlipImageTools leftHalfLayerFromView:nextView.view];
     [_flipPage.layer insertSublayer:leftHalfLayer atIndex:0];
     
     rightHalfLayer = [JWFlipImageTools rightHalfLayerFromView:nextView.view];
+    // Rotate layer to end up on the back side of the flipping layer.
     rightHalfLayer.transform = CATransform3DMakeRotation(M_PI, 0, 1, 0);
-    
     [_flipLayer addSublayer:rightHalfLayer];
 
     
@@ -323,10 +320,6 @@ typedef enum {
   leftHalf.transform = transform;
   
   [_flipLayer addSublayer:leftHalf];
-  
-//  self.leftShadow = [self leftGradientForFrame:leftHalf.frame];
-//  _leftShadow.alpha = 0;
-//  [_flipPage insertSubview:_leftShadow atIndex:0];
   
 }
 
@@ -555,6 +548,7 @@ typedef enum {
 - (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer {
   
   if ([gestureRecognizer isEqual:_recognizer] && _isFlipping) {
+    // New flipping action is blocked until drop animation is completed.
     return NO;
   }
 
