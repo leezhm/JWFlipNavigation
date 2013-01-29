@@ -6,4 +6,4 @@ A simple and easy to use navigation controller for flipping through the views li
 Usage
 -----
 
-Subclass JWFlipNavigationController and override -(void)viewControllerForIndex:(NSInteger)index to return the view controller for a given index.
+Subclass JWFlipNavigationController and override -(void)viewControllerForIndex:(NSInteger)index and return the view controller for a given index. Return nil when no more view controllers are available.
