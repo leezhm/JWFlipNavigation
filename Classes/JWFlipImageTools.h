@@ -27,8 +27,12 @@
 
 + (CALayer *)leftHalfLayerFromView:(UIView *)view;
 + (CALayer *)rightHalfLayerFromView:(UIView *)view;
++ (CALayer *)topHalfLayerFromView:(UIView *)view;
++ (CALayer *)bottomHalfLayerFromView:(UIView *)view;
 
 + (UIImageView *)leftGradientForFrame:(CGRect)frame;
 + (UIImageView *)rightGradientForFrame:(CGRect)frame;
++ (UIImageView *)topGradientForFrame:(CGRect)frame;
++ (UIImageView *)bottomGradientForFrame:(CGRect)frame;
 
 @end

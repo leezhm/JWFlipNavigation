@@ -30,8 +30,15 @@
 typedef enum {
   FlipDirectionNone,
   FlipDirectionLeft,
-  FlipDirectionRight
+  FlipDirectionRight,
+  FlipDirectionUp,
+  FlipDirectionDown
 } FlipDirection;
+
+typedef enum {
+  FlipModeHorizontal,
+  FlipModeVertical
+} FlipMode;
 
 @interface JWFlipNavigationController ()
 
@@ -47,8 +54,8 @@ typedef enum {
 @property (nonatomic, strong) CATransformLayer *flipLayer;
 @property (assign) BOOL didInitializeNewBackgroundImage;
 
-@property (nonatomic, strong) UIImageView *leftShadow;
-@property (nonatomic, strong) UIImageView *rightShadow;
+@property (nonatomic, strong) UIImageView *firstHalfShadow;
+@property (nonatomic, strong) UIImageView *secondHalfShadow;
 
  //Placeholder for new VC until added to self.viewControllers
 @property (nonatomic, strong) UIViewController *nextViewController;
@@ -95,26 +102,35 @@ typedef enum {
   
 }
 
-- (void)setLeftShadowOffset:(CGFloat)offset {
+- (void)setFirstHalfShadowOffset:(CGFloat)offset {
   
-  CGRect frame = _leftShadow.frame;
-  frame.origin.x = [self pageWidth] / 2 - frame.size.width - offset;
-  _leftShadow.frame = frame;
+  CGRect frame = _firstHalfShadow.frame;
+
+  if ([self flipMode] == FlipModeHorizontal) {
+    frame.origin.x = [self pageWidth] / 2 - frame.size.width - offset;
+  } else {
+    frame.origin.y = [self pageHeight] / 2 - frame.size.height - offset;
+  }
+  _firstHalfShadow.frame = frame;
   
 }
 
-- (void)setRightShadowOffset:(CGFloat)offset {
+- (void)setSecondHalfShadowOffset:(CGFloat)offset {
   
-  CGRect frame = _rightShadow.frame;
-  frame.origin.x = [self pageWidth] / 2 + offset;
-  _rightShadow.frame = frame;
+  CGRect frame = _secondHalfShadow.frame;
+  if ([self flipMode] == FlipModeHorizontal) {
+    frame.origin.x = [self pageWidth] / 2 + offset;
+  } else {
+    frame.origin.y = [self pageHeight] / 2 + offset;
+  }
+  _secondHalfShadow.frame = frame;
   
 }
 
 - (void)initializePageViews {
   
   UIViewController *currentController = [self _viewControllerForIndex:_currentPageIndex];
-  NSInteger nextIndex = (_flipDirection == FlipDirectionLeft) ?
+  NSInteger nextIndex = ([self isFlippingForward]) ?
     (_currentPageIndex + 1) : (_currentPageIndex - 1);
   
   
@@ -129,54 +145,91 @@ typedef enum {
   _flipLayer.bounds = CGRectMake(0, 0, frame.size.width, frame.size.height);
   _flipLayer.doubleSided = YES;
 
-  CALayer *rightHalfLayer = [JWFlipImageTools rightHalfLayerFromView:currentController.view];
-  CALayer *leftHalfLayer = [JWFlipImageTools leftHalfLayerFromView:currentController.view];
+  CALayer *firstHalfLayer;
+  CALayer *secondHalfLayer;
+  
+  if ([self flipMode] == FlipModeHorizontal) {
+    firstHalfLayer = [JWFlipImageTools leftHalfLayerFromView:currentController.view];
+    secondHalfLayer = [JWFlipImageTools rightHalfLayerFromView:currentController.view];
+    
+    self.firstHalfShadow = [JWFlipImageTools leftGradientForFrame:CGRectMake(0,
+                                                                             0,
+                                                                             [self pageWidth] / 2,
+                                                                             self.view.frame.size.height)];
+    _firstHalfShadow.alpha = 0;
+    
+    _secondHalfShadow = [JWFlipImageTools rightGradientForFrame:_firstHalfShadow.frame];
+    _secondHalfShadow.alpha = 0;
 
-  if (_flipDirection == FlipDirectionLeft) {
+    
+  } else {
+    firstHalfLayer = [JWFlipImageTools topHalfLayerFromView:currentController.view];
+    secondHalfLayer = [JWFlipImageTools bottomHalfLayerFromView:currentController.view];
+    
+    self.firstHalfShadow = [JWFlipImageTools topGradientForFrame:CGRectMake(0,
+                                                                             0,
+                                                                             self.view.frame.size.width,
+                                                                             [self pageHeight] / 2)];
+    _firstHalfShadow.alpha = 0;
+    
+    _secondHalfShadow = [JWFlipImageTools bottomGradientForFrame:_firstHalfShadow.frame];
+    _secondHalfShadow.alpha = 0;
+
+  }
+
+  if ([self isFlippingForward]) {
     
     // When flipping left, the right half is inserted into the rotating layer,
     // the left half is left static in _flipPage.
-    [_flipLayer addSublayer:rightHalfLayer];
-    [_flipPage.layer addSublayer:leftHalfLayer];
+    [_flipLayer addSublayer:secondHalfLayer];
+    [_flipPage.layer addSublayer:firstHalfLayer];
+    
+    
+  } else {
+    
+    // When flipping right, the left half is inserted into the rotating layer,
+    // the right half is left static in _flipPage.
+    [_flipLayer addSublayer:firstHalfLayer];
+    [_flipPage.layer addSublayer:secondHalfLayer];
+    
+    UIViewController *nextView = [self _viewControllerForIndex:nextIndex];
+
+    // Render layers for previous controller that is currently behind the current controller
+    if ([self flipMode] == FlipModeHorizontal) {
+      firstHalfLayer = [JWFlipImageTools leftHalfLayerFromView:nextView.view];
+      secondHalfLayer = [JWFlipImageTools rightHalfLayerFromView:nextView.view];
+    } else {
+      firstHalfLayer = [JWFlipImageTools topHalfLayerFromView:nextView.view];
+      secondHalfLayer = [JWFlipImageTools bottomHalfLayerFromView:nextView.view];
+    }
+
+    [_flipPage.layer insertSublayer:firstHalfLayer atIndex:0];
+    
+    // Rotate layer to end up on the back side of the flipping layer.
+    if ([self flipMode] == FlipModeHorizontal) {
+      secondHalfLayer.transform = CATransform3DMakeRotation(M_PI, 0, 1, 0);
+    } else {
+      secondHalfLayer.transform = CATransform3DMakeRotation(M_PI, 1, 0, 0);
+    }
+    [_flipLayer addSublayer:secondHalfLayer];
+
+    
+  }
+  
+  if ([self isFlippingForward]) {
     
     // After rendering the new view behind the current - set is as front view controller
     NSMutableArray *viewControllers = [NSMutableArray arrayWithArray:self.viewControllers];
     [viewControllers addObject:_nextViewController], _nextViewController = nil;
     self.viewControllers = viewControllers;
     
-  } else {
-    
-    // When flipping right, the left half is inserted into the rotating layer,
-    // the right half is left static in _flipPage.
-    [_flipLayer addSublayer:leftHalfLayer];
-    [_flipPage.layer addSublayer:rightHalfLayer];
-    
-    UIViewController *nextView = [self _viewControllerForIndex:nextIndex];
-
-    // Render layers for previous controller that is currently behind the current controller
-    leftHalfLayer = [JWFlipImageTools leftHalfLayerFromView:nextView.view];
-    [_flipPage.layer insertSublayer:leftHalfLayer atIndex:0];
-    
-    rightHalfLayer = [JWFlipImageTools rightHalfLayerFromView:nextView.view];
-    // Rotate layer to end up on the back side of the flipping layer.
-    rightHalfLayer.transform = CATransform3DMakeRotation(M_PI, 0, 1, 0);
-    [_flipLayer addSublayer:rightHalfLayer];
-
-    
   }
-  
-  self.leftShadow = [JWFlipImageTools leftGradientForFrame:CGRectMake(0,
-                                                                      0,
-                                                                      [self pageWidth] / 2,
-                                                                      self.view.frame.size.height)];
-  _leftShadow.alpha = 0;
 
-  self.rightShadow = [JWFlipImageTools rightGradientForFrame:_leftShadow.frame];
-  _rightShadow.alpha = 0;
   
-  [_flipPage addSubview:_leftShadow];
-  [_flipPage addSubview:_rightShadow];
+  [_flipPage addSubview:_firstHalfShadow];
+  [_flipPage addSubview:_secondHalfShadow];
   [_flipPage.layer addSublayer:_flipLayer];
+  
   [self.view addSubview:_flipPage];
 
 }
@@ -184,6 +237,12 @@ typedef enum {
 - (CGFloat)pageWidth {
   
   return self.topViewController.view.frame.size.width;
+  
+}
+
+- (CGFloat)pageHeight {
+  
+  return self.topViewController.view.frame.size.height;
   
 }
 
@@ -195,15 +254,7 @@ typedef enum {
   [CATransaction setAnimationDuration:duration];
   [CATransaction setAnimationTimingFunction:[CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut]];
   
-  CATransform3D transform = CATransform3DMakeRotation(angle, 0, 1, 0);
-  
-  // Height here is the flipped page's virtual height over the background
-  float height = _rotationRadius * sinf(angle);
-  
-  // Setting the perspective
-  transform.m14 = 0.0005 * height / _rotationRadius;
-  
-  layer.transform = transform;
+  layer.transform = [self rotationTransformForAngle:angle];
   
   [CATransaction commit];
   
@@ -215,56 +266,118 @@ typedef enum {
   [CATransaction begin];
   [CATransaction setValue:(id)kCFBooleanTrue forKey:kCATransactionDisableActions];
   
-  CATransform3D transform = CATransform3DMakeRotation(angle, 0, 1, 0);
-  
-  float height = _rotationRadius * sinf(angle);
-  
-  // Setting the perspective
-  transform.m14 = 0.0005 * height / _rotationRadius;
-  
-  layer.transform = transform;
+  layer.transform = [self rotationTransformForAngle:angle];
   
   [CATransaction commit];
   
 }
 
-- (float)angleFromPosition:(float)position {
+- (CATransform3D)rotationTransformForAngle:(float)angle {
+  float height = _rotationRadius * sinf(angle);
+  float perspective = 0.0005 * height / _rotationRadius;
+  
+  CATransform3D transform;
+  if ([self flipMode] == FlipModeHorizontal) {
+    transform = CATransform3DMakeRotation(angle, 0, 1, 0);
+    // Setting the perspective
+    transform.m14 = perspective;
+  } else {
+    transform = CATransform3DMakeRotation(-angle, 1, 0, 0);
+    // Setting the perspective
+    transform.m24 = perspective;
+  }
+  return transform;
+}
+
+- (float)angleFromPosition:(CGPoint)pos {
   
   CGFloat panDelta;
   switch (_flipDirection) {
 
     case FlipDirectionLeft:
-      panDelta = _rotationRadius - (_panStart.x - position);
+      panDelta = _panStart.x - pos.x;
       break;
 
     case FlipDirectionRight:
-      panDelta = _rotationRadius - (position - _panStart.x);
+      panDelta = pos.x - _panStart.x;
+      break;
+      
+    case FlipDirectionUp:
+      panDelta = _panStart.y - pos.y;
+      break;
+      
+    case FlipDirectionDown:
+      panDelta = pos.y - _panStart.y;
       break;
       
     default:
 #ifdef DEBUG
-      NSLog(@"Warning: Unhandled flip direction!");
+      NSLog(@"%s WARNING: Unhandled flip direction!", __PRETTY_FUNCTION__);
 #endif
       break;
   }
+  
+  CGFloat cosineBase = _rotationRadius - panDelta;
 
-  panDelta = MAX(-_rotationRadius, MIN(_rotationRadius, panDelta));
-  CGFloat angle = acosf(panDelta / _rotationRadius);
+  cosineBase = MAX(-_rotationRadius, MIN(_rotationRadius, cosineBase));
+  CGFloat angle = acosf(cosineBase / _rotationRadius);
   return angle;
   
 }
 #pragma mark - Pan And Flip Control
 
-- (void)finalizeRenderingNewViewComponents {
+- (void)renderNewViewsFirstHalfInFlipLayer {
   
   UIViewController *nextController = [self.viewControllers objectAtIndex:(_currentPageIndex + 1)];
   
-  CALayer *leftHalf = [JWFlipImageTools leftHalfLayerFromView:nextController.view];
+  CALayer *firstHalf;
+  CATransform3D transform;
+  if ([self flipMode] == FlipModeHorizontal) {
+    firstHalf = [JWFlipImageTools leftHalfLayerFromView:nextController.view];
+    transform = CATransform3DMakeRotation(M_PI, 0, 1, 0);
+  } else {
+    firstHalf = [JWFlipImageTools topHalfLayerFromView:nextController.view];
+    transform = CATransform3DMakeRotation(M_PI, 1, 0, 0);
+  }
+
+  firstHalf.transform = transform;
   
-  CATransform3D transform = CATransform3DMakeRotation(M_PI, 0, 1, 0);
-  leftHalf.transform = transform;
+  [_flipLayer addSublayer:firstHalf];
   
-  [_flipLayer addSublayer:leftHalf];
+}
+
+- (FlipMode) flipMode {
+  
+  return FlipModeVertical;
+  
+}
+
+- (BOOL)isFlippingForward {
+  
+  return _flipDirection == FlipDirectionLeft || _flipDirection == FlipDirectionUp;
+  
+}
+
+- (void) updateShadowsForAngle:(float)angle {
+  
+  CGFloat maxOffset = [self flipMode] == FlipModeHorizontal ? [self pageWidth] / 2 : [self pageHeight] / 2;
+  CGFloat shadowOffset = fabsf(maxOffset * cosf(angle));
+  float shadowAlpha = shadowOffset / maxOffset;
+  
+  if (([self isFlippingForward] && angle < M_PI_2) ||
+      (![self isFlippingForward] && angle > M_PI_2)) {
+    
+    _firstHalfShadow.alpha = 0;
+    _secondHalfShadow.alpha = shadowAlpha;
+    [self setSecondHalfShadowOffset:shadowOffset];
+    
+  } else {
+    
+    _secondHalfShadow.alpha = 0;
+    _firstHalfShadow.alpha = shadowAlpha;
+    [self setFirstHalfShadowOffset:shadowOffset];
+    
+  }
   
 }
 
@@ -272,18 +385,32 @@ typedef enum {
   
   self.panStart = [recognizer locationInView:self.view.window];
   
-  _rotationRadius = fabsf(_panStart.x - self.view.frame.size.width / 2);
-  if (_panStart.x < (self.view.frame.size.width / 2)) {
-    
-    _flipDirection = FlipDirectionRight;
-    
+  CGPoint position = [_recognizer locationInView:_recognizer.view];
+  
+  // Determine flip direction
+  
+  if ([self flipMode] == FlipModeHorizontal) {
+
+    if (position.x > [self pageWidth] / 2) {
+      _flipDirection = FlipDirectionLeft;
+    } else {
+      _flipDirection = FlipDirectionRight;
+    }
+
   } else {
-    
-    _flipDirection = FlipDirectionLeft;
-    
+    if (position.y > [self pageHeight] / 2) {
+      _flipDirection = FlipDirectionUp;
+    } else {
+      _flipDirection = FlipDirectionDown;
+    }
   }
-  if (_flipDirection == FlipDirectionRight && _currentPageIndex == 0) {
-    
+  
+  _rotationRadius = ([self flipMode] == FlipModeHorizontal)
+    ? fabsf(_panStart.x - self.view.frame.size.width / 2)
+    : fabsf(_panStart.y - self.view.frame.size.height / 2);
+  
+  if (![self isFlippingForward] && _currentPageIndex == 0) {
+    // Do not flip back past 0:th page
     _flipDirection = FlipDirectionNone;
     return;
   }
@@ -291,8 +418,9 @@ typedef enum {
   _didInitializeNewBackgroundImage = NO;
   _isFlipping = YES;
   
-  if (_flipDirection == FlipDirectionLeft) {
-    // If flipping to a new view controller - first check if one is available, else abort gesture.
+  // If flipping to a new view controller - first check if one is available, else abort gesture.
+  if ([self isFlippingForward]) {
+
     _nextViewController = [self _viewControllerForIndex:(_currentPageIndex + 1)];
     if (_nextViewController) {
       _nextViewController.view.frame = self.topViewController.view.frame;
@@ -306,7 +434,7 @@ typedef enum {
   }
   
   [self initializePageViews];
-  
+
 }
 
 
@@ -317,58 +445,28 @@ typedef enum {
   }
   
 
-  CGFloat currentPosition = [recognizer locationInView:self.view.window].x;
-  
-  CGFloat angle = [self angleFromPosition:currentPosition];
+  CGFloat angle = [self angleFromPosition:[recognizer locationInView:self.view.window]];
   
   CGFloat shadowOffset = 0;
   
-  switch (_flipDirection) {
-
-    case FlipDirectionLeft:
-
-      if (!_didInitializeNewBackgroundImage) {
-        
-        // If this view-half hasn't been rendered yet, do it now
-        [self finalizeRenderingNewViewComponents];
-        
-        _didInitializeNewBackgroundImage = YES;
-      }
-      [self setRotationAngle:-angle forLayer:_flipLayer];
-      shadowOffset = _flipLayer.frame.size.width / 2;
-      
-      break;
-      
-    case FlipDirectionRight:
-
-      [self setRotationAngle:(angle) forLayer:_flipLayer];
-      shadowOffset = _flipLayer.frame.size.width / 2;
-
-      break;
-      
-    default:
-      break;
-  }
-  
-  // Adjust shadows:
-  CGFloat maxOffset = [self pageWidth] / 2;
-  float shadowAlpha = shadowOffset / maxOffset;
-  
-  if ((_flipDirection == FlipDirectionLeft && angle < M_PI_2) ||
-      (_flipDirection == FlipDirectionRight && angle > M_PI_2)) {
+  if ([self isFlippingForward]) {
     
-    _leftShadow.alpha = 0;
-    _rightShadow.alpha = shadowAlpha;
-
-    [self setRightShadowOffset:shadowOffset];
+    if (!_didInitializeNewBackgroundImage) {
+      
+      // If this view-half hasn't been rendered yet, do it now
+      [self renderNewViewsFirstHalfInFlipLayer];
+      
+      _didInitializeNewBackgroundImage = YES;
+    }
+    [self setRotationAngle:-angle forLayer:_flipLayer];
     
   } else {
     
-    _rightShadow.alpha = 0;
-    _leftShadow.alpha = shadowAlpha;
-    [self setLeftShadowOffset:shadowOffset];
+    [self setRotationAngle:(angle) forLayer:_flipLayer];
     
   }
+  
+  [self updateShadowsForAngle:angle];
 
 }
 
@@ -380,8 +478,7 @@ typedef enum {
     return;
   }
   
-  float currentPosition = [recognizer locationInView:self.view.window].x;
-  float angle = [self angleFromPosition:currentPosition];
+  float angle = [self angleFromPosition:[recognizer locationInView:self.view.window]];
   
   /*
    Finalize flip page and shadow's final position through animation,
@@ -406,16 +503,11 @@ typedef enum {
 
     [UIView animateWithDuration:dropDuration delay:0 options:UIViewAnimationCurveEaseOut animations:^{
       
-      if ((_flipDirection == FlipDirectionLeft && angle < M_PI_2) ||
-          (_flipDirection == FlipDirectionRight && angle > M_PI_2)) {
-        
-        [self setRightShadowOffset:[self pageWidth] / 2];
-        _rightShadow.alpha = 1;
-        
+      
+      if (angle < M_PI_2) {
+        [self updateShadowsForAngle:0];
       } else {
-        
-        [self setLeftShadowOffset:[self pageWidth] / 2];
-        _leftShadow.alpha = 1;
+        [self updateShadowsForAngle:M_PI];
       }
       
     } completion:^(BOOL finished) {
@@ -431,26 +523,18 @@ typedef enum {
   
   if (angle > M_PI_2) {
     
-    
-    switch (_flipDirection) {
-
-      case FlipDirectionLeft:
-        _currentPageIndex++;
-        break;
-        
-      case FlipDirectionRight:
-        // User has navigated back to previous view controller, the last one will be released.
-        [self popViewControllerAnimated:NO];
-        _currentPageIndex--;
-        break;
-        
-        
-      default:
-        break;
+    if ([self isFlippingForward]) {
+      _currentPageIndex++;
+    } else {
+      // User has navigated back to previous view controller, the last one will be released.
+      [self popViewControllerAnimated:NO];
+      _currentPageIndex--;
+      
     }
+    
   } else {
     
-    if (_flipDirection == FlipDirectionLeft) {
+    if ([self isFlippingForward]) {
       /*
        User has begun navigating forward, but aborted,
        the view controller that was added when begin flipping will now be released.
@@ -463,8 +547,8 @@ typedef enum {
   _isFlipping = NO;
   
   // Final cleanup
-  [_leftShadow removeFromSuperview], _leftShadow = nil;
-  [_rightShadow removeFromSuperview], _rightShadow = nil;
+  [_firstHalfShadow removeFromSuperview], _firstHalfShadow = nil;
+  [_secondHalfShadow removeFromSuperview], _secondHalfShadow = nil;
   [_flipLayer removeFromSuperlayer];
   [_flipPage removeFromSuperview];
   
@@ -500,9 +584,12 @@ typedef enum {
 
 - (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer {
   
-  if ([gestureRecognizer isEqual:_recognizer] && _isFlipping) {
-    // New flipping action is blocked until drop animation is completed.
-    return NO;
+  if ([gestureRecognizer isEqual:_recognizer]) {
+    if (_isFlipping) {
+      // New flipping action is blocked until drop animation is completed.
+      return NO;
+    }
+    
   }
 
   return YES;
