@@ -16,13 +16,14 @@
 
 - (CGFloat)randFloat {
   
-  return (rand() % 100) / 100.;
+  return (arc4random() % 100) / 100.;
   
 }
 
 - (void)viewDidLoad {
  [super viewDidLoad];
-  self.view.backgroundColor = [UIColor colorWithHue:[self randFloat] saturation:.8 brightness:.8 alpha:1];
+  float hue = [self randFloat];
+  self.view.backgroundColor = [UIColor colorWithHue:hue saturation:.8 brightness:.8 alpha:1];
   
 }
 
