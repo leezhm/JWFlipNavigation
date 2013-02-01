@@ -35,11 +35,6 @@ typedef enum {
   FlipDirectionDown
 } FlipDirection;
 
-typedef enum {
-  FlipModeHorizontal,
-  FlipModeVertical
-} FlipMode;
-
 @interface JWFlipNavigationController ()
 
 @property (nonatomic, assign) NSInteger currentPageIndex;
@@ -348,6 +343,7 @@ typedef enum {
 
 - (FlipMode) flipMode {
   
+  // Override this method to set vertical or horizontal flipping
   return FlipModeVertical;
   
 }
@@ -446,8 +442,6 @@ typedef enum {
   
 
   CGFloat angle = [self angleFromPosition:[recognizer locationInView:self.view.window]];
-  
-  CGFloat shadowOffset = 0;
   
   if ([self isFlippingForward]) {
     

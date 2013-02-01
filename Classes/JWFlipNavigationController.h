@@ -23,6 +23,13 @@
 
 #import <UIKit/UIKit.h>
 
+typedef enum {
+  FlipModeHorizontal,
+  FlipModeVertical
+} FlipMode;
+
 @interface JWFlipNavigationController : UINavigationController <UIGestureRecognizerDelegate>
+
+- (FlipMode)flipMode;
 
 @end

@@ -24,4 +24,10 @@
 
 }
 
+-(FlipMode)flipMode {
+ 
+  return FlipModeVertical;
+
+}
+
 @end
