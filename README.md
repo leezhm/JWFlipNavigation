@@ -3,7 +3,9 @@ JWFlipNavigation
 
 A simple and easy to use navigation controller for flipping through the views like pages in a book.
 
-Usage
------
+### Usage
 
-Subclass JWFlipNavigationController and override -(void)viewControllerForIndex:(NSInteger)index and return the view controller for a given index. Return nil when no more view controllers are available.
+
+Subclass ```JWFlipNavigationController``` and override the inherited method ```- (void)viewControllerForIndex:(NSInteger)index``` to return the view controller for the requested index. Return ```nil``` when no more view controllers are available.
+
+Override the method ```- (FlipMode)flipMode``` to control horizontal or vertical page flipping.
