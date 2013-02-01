@@ -243,6 +243,42 @@ typedef enum {
 
 
 #pragma mark - Rotation
+- (float)angleFromPosition:(CGPoint)pos {
+  
+  CGFloat panDelta;
+  switch (_flipDirection) {
+      
+    case FlipDirectionLeft:
+      panDelta = _panStart.x - pos.x;
+      break;
+      
+    case FlipDirectionRight:
+      panDelta = pos.x - _panStart.x;
+      break;
+      
+    case FlipDirectionUp:
+      panDelta = _panStart.y - pos.y;
+      break;
+      
+    case FlipDirectionDown:
+      panDelta = pos.y - _panStart.y;
+      break;
+      
+    default:
+#ifdef DEBUG
+      NSLog(@"%s WARNING: Unhandled flip direction!", __PRETTY_FUNCTION__);
+#endif
+      break;
+  }
+  
+  CGFloat cosineBase = _rotationRadius - panDelta;
+  
+  cosineBase = MAX(-_rotationRadius, MIN(_rotationRadius, cosineBase));
+  CGFloat angle = acosf(cosineBase / _rotationRadius);
+  return angle;
+  
+}
+
 - (void)setRotationAngle:(CGFloat)angle forLayer:(CALayer *)layer animationDuration:(float)duration {
   
   [CATransaction begin];
@@ -269,56 +305,22 @@ typedef enum {
 
 - (CATransform3D)rotationTransformForAngle:(float)angle {
   float height = _rotationRadius * sinf(angle);
-  float perspective = 0.0005 * height / _rotationRadius;
   
   CATransform3D transform;
   if ([self flipMode] == FlipModeHorizontal) {
     transform = CATransform3DMakeRotation(angle, 0, 1, 0);
     // Setting the perspective
+    float perspective = 0.0008 * height / _rotationRadius;
     transform.m14 = perspective;
   } else {
     transform = CATransform3DMakeRotation(-angle, 1, 0, 0);
     // Setting the perspective
+    float perspective = 0.0008 * height / _rotationRadius;
     transform.m24 = perspective;
   }
   return transform;
 }
 
-- (float)angleFromPosition:(CGPoint)pos {
-  
-  CGFloat panDelta;
-  switch (_flipDirection) {
-
-    case FlipDirectionLeft:
-      panDelta = _panStart.x - pos.x;
-      break;
-
-    case FlipDirectionRight:
-      panDelta = pos.x - _panStart.x;
-      break;
-      
-    case FlipDirectionUp:
-      panDelta = _panStart.y - pos.y;
-      break;
-      
-    case FlipDirectionDown:
-      panDelta = pos.y - _panStart.y;
-      break;
-      
-    default:
-#ifdef DEBUG
-      NSLog(@"%s WARNING: Unhandled flip direction!", __PRETTY_FUNCTION__);
-#endif
-      break;
-  }
-  
-  CGFloat cosineBase = _rotationRadius - panDelta;
-
-  cosineBase = MAX(-_rotationRadius, MIN(_rotationRadius, cosineBase));
-  CGFloat angle = acosf(cosineBase / _rotationRadius);
-  return angle;
-  
-}
 #pragma mark - Pan And Flip Control
 
 - (void)renderNewViewsFirstHalfInFlipLayer {
