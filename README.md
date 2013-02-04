@@ -20,5 +20,7 @@ JWFlipNavigation uses ARC. If you would like to add JWFlipNavigation to a projec
 
 
 ### License
-
 Available under the MIT license. See the LICENSE file for more info.
+
+### Acknowledgements
+Credits to the FlipBoard app and the developers behind it, of course a strong inspiration when creating this implementation.
